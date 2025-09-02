@@ -1,10 +1,11 @@
 
-from flask import Flask, render_template, request, redirect, url_for, abort
+from flask import Flask, render_template, request, redirect, url_for, abort, session, flash
 import json
 import os
 import uuid
 
 app = Flask(__name__)
+app.secret_key = os.urandom(24)
 
 DATA_FILE = 'data.json'
 
@@ -20,10 +21,30 @@ def save_data(data):
 
 @app.route('/')
 def index():
-    return redirect(url_for('admin'))
+    if 'logged_in' in session:
+        return redirect(url_for('admin'))
+    return redirect(url_for('login'))
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        password = request.form.get('password')
+        if password == os.environ.get('ADMIN_PASSWORD'):
+            session['logged_in'] = True
+            return redirect(url_for('admin'))
+        else:
+            flash('Invalid password')
+    return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    session.pop('logged_in', None)
+    return redirect(url_for('login'))
 
 @app.route('/admin', methods=['GET', 'POST'])
 def admin():
+    if 'logged_in' not in session:
+        return redirect(url_for('login'))
     if request.method == 'POST':
         page_name = request.form.get('page_name')
         projects = request.form.get('projects').split(',')
@@ -39,6 +60,16 @@ def admin():
             save_data(data)
             return redirect(url_for('admin'))
     return render_template('admin.html', pages=get_data())
+
+@app.route('/admin/delete/<page_id>', methods=['POST'])
+def delete_page(page_id):
+    if 'logged_in' not in session:
+        return redirect(url_for('login'))
+    data = get_data()
+    if page_id in data:
+        del data[page_id]
+        save_data(data)
+    return redirect(url_for('admin'))
 
 @app.route('/<page_id>')
 def choice(page_id):
