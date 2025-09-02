@@ -2,7 +2,7 @@
 from flask import Flask, render_template, request, redirect, url_for, abort, session, flash
 import json
 import os
-import uuid
+import re
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
@@ -18,6 +18,12 @@ def get_data():
 def save_data(data):
     with open(DATA_FILE, 'w') as f:
         json.dump(data, f, indent=4)
+
+def slugify(s):
+    s = s.lower().strip()
+    s = re.sub(r'[\s_]+', '-', s)
+    s = re.sub(r'[^a-z0-9-]', '', s)
+    return s
 
 @app.route('/')
 def index():
@@ -50,7 +56,12 @@ def admin():
         projects = request.form.get('projects').split(',')
         if page_name and projects:
             data = get_data()
-            page_id = str(uuid.uuid4())
+            slug = slugify(page_name)
+            page_id = slug
+            i = 1
+            while page_id in data:
+                page_id = f'{slug}-{i}'
+                i += 1
             data[page_id] = {
                 'name': page_name,
                 'projects': [p.strip() for p in projects],
