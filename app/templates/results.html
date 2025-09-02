@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Results for {{ page.name }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="page-header">
+            <h1>Results for {{ page.name }}</h1>
+        </div>
+
+        <div class="results-grid">
+            {% for project, members in page.groups.items() %}
+                <div class="result-card">
+                    <h2>{{ project }}</h2>
+                    <ul>
+                        {% for member in members %}
+                            <li>{{ member }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="page-header">
+            <h1>Admin</h1>
+        </div>
+
+        <h2>Create a New Choice Page</h2>
+        <form action="{{ url_for('admin') }}" method="post">
+            <div class="form-group">
+                <label for="page_name">Page Name:</label>
+                <input type="text" id="page_name" name="page_name" required>
+            </div>
+            <div class="form-group">
+                <label for="projects">Projects (comma-separated):</label>
+                <input type="text" id="projects" name="projects" required>
+            </div>
+            <button type="submit" class="btn">Create Page</button>
+        </form>
+
+        <hr>
+
+        <h2>Existing Pages</h2>
+        <ul class="project-list">
+            {% for page_id, page in pages.items() %}
+                <li>
+                    <div class="project-name">
+                        <a href="{{ url_for('choice', page_id=page_id) }}">{{ page.name }}</a>
+                    </div>
+                    <div>
+                        <a href="{{ url_for('results', page_id=page_id) }}" class="btn btn-secondary">Results</a>
+                        {% if not page.closed %}
+                            <form action="{{ url_for('close', page_id=page_id) }}" method="post" style="display: inline;">
+                                <button type="submit" class="btn">Close</button>
+                            </form>
+                        {% else %}
+                            (Closed)
+                        {% endif %}
+                    </div>
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+</body>
+</html>

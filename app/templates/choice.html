@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ page.name }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="page-header">
+            <h1>{{ page.name }}</h1>
+            {% if page.closed %}
+                <a href="{{ url_for('results', page_id=page_id) }}" class="btn btn-secondary">View Results</a>
+            {% endif %}
+        </div>
+
+        {% if page.closed %}
+            <p>This page is closed.</p>
+        {% else %}
+            <form action="{{ url_for('submit', page_id=page_id) }}" method="post">
+                <div class="form-group">
+                    <label for="user_name">Your Name:</label>
+                    <input type="text" id="user_name" name="user_name" required>
+                </div>
+
+                <h2>Projects</h2>
+                {% for project in page.projects %}
+                    <div class="form-group">
+                        <label for="preference_{{ project }}">Preference for {{ project }}:</label>
+                        <input type="number" id="preference_{{ project }}" name="preference_{{ project }}" min="1" max="{{ page.projects|length }}" required>
+                    </div>
+                {% endfor %}
+
+                <button type="submit" class="btn">Submit</button>
+            </form>
+        {% endif %}
+
+        <hr>
+
+        <h2>Submitted Preferences</h2>
+        <ul class="project-list">
+            {% for user_name, preferences in page.users.items() %}
+                <li>
+                    <div class="project-name">{{ user_name }}</div>
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+</body>
+</html>
