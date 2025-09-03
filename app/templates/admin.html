@@ -77,6 +77,9 @@
                             </form>
                         {% else %}
                             (Closed)
+                            <form action="{{ url_for('reopen', page_id=page_id) }}" method="post" style="display: inline;">
+                                <button type="submit" class="btn">Reopen</button>
+                            </form>
                         {% endif %}
                         <form action="{{ url_for('delete_page', page_id=page_id) }}" method="post" style="display: inline;">
                             <button type="submit" class="btn btn-danger">Delete</button>

@@ -128,6 +128,20 @@ def close(page_id):
     
     return redirect(url_for('results', page_id=page_id))
 
+@app.route('/<page_id>/reopen', methods=['POST'])
+def reopen(page_id):
+    if 'logged_in' not in session:
+        return redirect(url_for('login'))
+    data = get_data()
+    page = data.get(page_id)
+    if not page:
+        abort(404)
+    
+    page['closed'] = False
+    save_data(data)
+    
+    return redirect(url_for('admin'))
+
 @app.route('/<page_id>/results')
 def results(page_id):
     data = get_data()
