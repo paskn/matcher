@@ -25,6 +25,7 @@
                 </div>
 
                 <h2>Projects</h2>
+                <p>Please rank your project preferences from 1 (most preferred) to {{ page.projects|length }} (least preferred).</p>
                 {% for project in page.projects %}
                     <div class="form-group">
                         <label for="preference_{{ project }}">Preference for {{ project }}:</label>
