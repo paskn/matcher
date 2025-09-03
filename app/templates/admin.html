@@ -22,8 +22,43 @@
                 <label for="projects">Projects (comma-separated):</label>
                 <input type="text" id="projects" name="projects" required>
             </div>
+            <div class="form-group">
+                <label>Cap Type:</label>
+                <input type="radio" id="soft_cap" name="cap_type" value="soft" checked>
+                <label for="soft_cap">Soft</label>
+                <input type="radio" id="hard_cap" name="cap_type" value="hard">
+                <label for="hard_cap">Hard</label>
+            </div>
+            <div class="form-group">
+                <label for="group_size">Group Size:</label>
+                <input type="number" id="group_size" name="group_size" min="1" required>
+            </div>
+            <div class="form-group" id="variation_group">
+                <label for="variation">Group Size Variation:</label>
+                <input type="number" id="variation" name="variation" min="0" value="0">
+            </div>
             <button type="submit" class="btn">Create Page</button>
         </form>
+
+        <script>
+            const softCapRadio = document.getElementById('soft_cap');
+            const hardCapRadio = document.getElementById('hard_cap');
+            const variationGroup = document.getElementById('variation_group');
+
+            function toggleVariation() {
+                if (softCapRadio.checked) {
+                    variationGroup.style.display = 'block';
+                } else {
+                    variationGroup.style.display = 'none';
+                }
+            }
+
+            softCapRadio.addEventListener('change', toggleVariation);
+            hardCapRadio.addEventListener('change', toggleVariation);
+
+            // Initial check
+            toggleVariation();
+        </script>
 
         <hr>
 
