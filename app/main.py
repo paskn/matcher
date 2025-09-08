@@ -162,7 +162,8 @@ def assign_groups(page):
         return
     cap_type = page.get('cap_type', 'soft')
     group_size = page.get('group_size', num_users // num_projects if num_projects > 0 else 1)
-    variation = page.get('variation', 0)
+    # Variation is expected to be a positive number. Using abs() to handle negative inputs gracefully.
+    variation = abs(page.get('variation', 0))
 
     if num_users == 0:
         page['groups'] = {project: [] for project in projects}
