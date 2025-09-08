@@ -156,6 +156,10 @@ def assign_groups(page):
     projects = page['projects']
     num_users = len(users)
     num_projects = len(projects)
+
+    if num_projects == 0:
+        page['groups'] = {}
+        return
     cap_type = page.get('cap_type', 'soft')
     group_size = page.get('group_size', num_users // num_projects if num_projects > 0 else 1)
     variation = page.get('variation', 0)
