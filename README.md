@@ -1,4 +1,4 @@
-# Matchmaker
+# Matcher
 
 A simple matchmaking Flask application. It asks a series of questions and suggests a best match based on the answers.
 
@@ -27,6 +27,7 @@ To run the application locally without Docker, follow these steps:
     ```bash
     export FLASK_APP=app/main.py
     export FLASK_ENV=development
+    export ADMIN_PASSWORD=changeme
     flask run
     ```
 
