@@ -202,20 +202,20 @@ page = {
 - [x] Multiple users, single project
 
 ### 2. **Extreme Group Sizes**
-- [ ] `group_size = 0` (should handle gracefully)
-- [ ] `group_size = 1` (minimal groups)
-- [ ] `group_size` larger than total users
+- [x] `group_size = 0` (should handle gracefully)
+- [x] `group_size = 1` (minimal groups)
+- [x] `group_size` larger than total users
 - [ ] Very large `group_size` (e.g., 1000) with few users
 
 ### 3. **Variation Edge Cases**
-- [ ] `variation = 0` (strict group sizes)
-- [ ] `variation` larger than `group_size`
-- [ ] Negative `variation` values
+- [x] `variation = 0` (strict group sizes)
+- [x] `variation` larger than `group_size`
+- [x] Negative `variation` values
 - [ ] Very large `variation` values
 
 ### 4. **Preference Edge Cases**
-- [ ] All users have identical preferences
-- [ ] Users with missing preferences for some projects
+- [x] All users have identical preferences
+- [x] Users with missing preferences for some projects
 - [ ] Users with duplicate preference values
 - [ ] Preferences with values outside expected range (e.g., 0, negative, >num_projects)
 - [ ] Users with only partial preferences (not all projects ranked)
@@ -223,12 +223,12 @@ page = {
 ### 5. **Hard Cap vs Soft Cap Edge Cases**
 - [x] Hard cap with impossible constraints (too many users for available spots)
 - [x] Hard cap with exact capacity match
-- [ ] Soft cap with zero variation (should behave like hard cap)
-- [ ] Switching between hard and soft cap with same data
+- [x] Soft cap with zero variation (should behave like hard cap)
+- [x] Switching between hard and soft cap with same data
 
 ### 6. **User Distribution Scenarios**
 - [x] Heavily skewed preferences (everyone wants the same project)
-- [ ] Anti-correlated preferences (users prefer different projects)
+- [x] Anti-correlated preferences (users prefer different projects)
 - [ ] Sequential preferences (User 1 prefers 1,2,3..., User 2 prefers 2,3,1...)
 - [ ] Random/shuffled preferences
 
