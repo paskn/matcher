@@ -195,11 +195,11 @@ page = {
 ## Edge Cases for Future Testing
 
 ### 1. **Empty or Minimal Data**
-- [ ] No users (`users = {}`)
-- [ ] No projects (`projects = []`)
-- [ ] Single user, single project
-- [ ] Single user, multiple projects
-- [ ] Multiple users, single project
+- [x] No users (`users = {}`)
+- [x] No projects (`projects = []`)
+- [x] Single user, single project
+- [x] Single user, multiple projects
+- [x] Multiple users, single project
 
 ### 2. **Extreme Group Sizes**
 - [ ] `group_size = 0` (should handle gracefully)
@@ -221,13 +221,13 @@ page = {
 - [ ] Users with only partial preferences (not all projects ranked)
 
 ### 5. **Hard Cap vs Soft Cap Edge Cases**
-- [ ] Hard cap with impossible constraints (too many users for available spots)
-- [ ] Hard cap with exact capacity match
+- [x] Hard cap with impossible constraints (too many users for available spots)
+- [x] Hard cap with exact capacity match
 - [ ] Soft cap with zero variation (should behave like hard cap)
 - [ ] Switching between hard and soft cap with same data
 
 ### 6. **User Distribution Scenarios**
-- [ ] Heavily skewed preferences (everyone wants the same project)
+- [x] Heavily skewed preferences (everyone wants the same project)
 - [ ] Anti-correlated preferences (users prefer different projects)
 - [ ] Sequential preferences (User 1 prefers 1,2,3..., User 2 prefers 2,3,1...)
 - [ ] Random/shuffled preferences
