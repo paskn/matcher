@@ -113,14 +113,32 @@ def submit(page_id):
     if not page or page['closed']:
         abort(404)
     
-    user_name = request.form.get('user_name')
-    preferences = {}
-    for project in page['projects']:
-        preferences[project] = int(request.form.get(f'preference_{project}'))
+    user_name = (request.form.get('user_name') or '').strip()
+    if not user_name:
+        flash('Please enter your name.')
+        return redirect(url_for('choice', page_id=page_id))
+    # Names are the only identity. A silent overwrite would erase someone
+    # else's vote, so near-duplicates are rejected.
+    if user_name.casefold() in {u.casefold() for u in page['users']}:
+        flash(f'The name "{user_name}" is already taken. Add a surname or initial.')
+        return redirect(url_for('choice', page_id=page_id))
 
-    if user_name and preferences:
-        page['users'][user_name] = preferences
-        save_data(data)
+    preferences = {}
+    try:
+        for project in page['projects']:
+            preferences[project] = int(request.form.get(f'preference_{project}'))
+    except (TypeError, ValueError):
+        flash('Please rank every project.')
+        return redirect(url_for('choice', page_id=page_id))
+    # Tied ranks make the costs meaningless, so each rank must be used once.
+    num_projects = len(page['projects'])
+    if sorted(preferences.values()) != list(range(1, num_projects + 1)):
+        flash(f'Use each rank from 1 to {num_projects} exactly once.')
+        return redirect(url_for('choice', page_id=page_id))
+
+    page['users'][user_name] = preferences
+    save_data(data)
+    flash(f'Thanks, {user_name}. Your ranking is saved.')
 
     return redirect(url_for('choice', page_id=page_id))
 

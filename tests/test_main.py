@@ -1,7 +1,9 @@
 import itertools
+import json
 import os
 import random
 import sys
+import tempfile
 import unittest
 
 # Add the project root to the path so we can import the app module
@@ -175,6 +177,48 @@ class TestHelpers(unittest.TestCase):
     def test_legacy_hard_bounds(self):
         page = {'cap_type': 'hard', 'group_size': 5, 'variation': 0}
         self.assertEqual(size_bounds(page), (1, 5))
+
+
+class TestRoutes(unittest.TestCase):
+
+    def setUp(self):
+        fd, self.data_file = tempfile.mkstemp(suffix='.json')
+        os.close(fd)
+        self.old_data_file = main.DATA_FILE
+        main.DATA_FILE = self.data_file
+        with open(self.data_file, 'w') as f:
+            json.dump({'event': {'name': 'Event', 'projects': ['A', 'B'], 'users': {},
+                                 'closed': False, 'min_size': 1, 'max_size': 2}}, f)
+        main.app.config['TESTING'] = True
+        self.client = main.app.test_client()
+
+    def tearDown(self):
+        main.DATA_FILE = self.old_data_file
+        os.remove(self.data_file)
+
+    def login(self):
+        with self.client.session_transaction() as s:
+            s['logged_in'] = True
+
+    def vote(self, name, a, b):
+        return self.client.post('/event/submit', data={
+            'user_name': name, 'preference_A': a, 'preference_B': b})
+
+    def users(self):
+        return main.get_data()['event']['users']
+
+    def test_vote_saved(self):
+        self.vote('Ann', 1, 2)
+        self.assertEqual(self.users(), {'Ann': {'A': 1, 'B': 2}})
+
+    def test_duplicate_name_rejected(self):
+        self.vote('Ann', 1, 2)
+        self.vote(' ann ', 2, 1)
+        self.assertEqual(self.users(), {'Ann': {'A': 1, 'B': 2}})
+
+    def test_tied_ranks_rejected(self):
+        self.vote('Ann', 1, 1)
+        self.assertEqual(self.users(), {})
 
 
 if __name__ == '__main__':

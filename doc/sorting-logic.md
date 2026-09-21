@@ -49,3 +49,8 @@ Pages created before `min_size` and `max_size` existed store `cap_type`, `group_
 
 - soft: `max(1, group_size - |variation|)` to `group_size + |variation|`
 - hard: `1` to `group_size`
+
+## Input validation
+
+- Each rank from 1 to the number of projects must appear exactly once. Ties would make costs meaningless.
+- Names are unique, ignoring case and surrounding spaces. A repeat would overwrite someone else's vote.

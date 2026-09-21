@@ -15,6 +15,16 @@
             {% endif %}
         </div>
 
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <ul class="flash">
+                    {% for message in messages %}
+                        <li>{{ message }}</li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+        {% endwith %}
+
         {% if page.closed %}
             <p>This page is closed.</p>
         {% else %}
@@ -25,7 +35,7 @@
                 </div>
 
                 <h2>Projects</h2>
-                <p>Please rank your project preferences from 1 (most preferred) to {{ page.projects|length }} (least preferred).</p>
+                <p>Please rank your project preferences from 1 (most preferred) to {{ page.projects|length }} (least preferred). Use each number once.</p>
                 {% for project in page.projects %}
                     <div class="form-group">
                         <label for="preference_{{ project }}">Preference for {{ project }}:</label>
