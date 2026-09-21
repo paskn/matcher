@@ -144,6 +144,8 @@ def submit(page_id):
 
 @app.route('/<page_id>/close', methods=['POST'])
 def close(page_id):
+    if 'logged_in' not in session:
+        return redirect(url_for('login'))
     data = get_data()
     page = data.get(page_id)
     if not page:

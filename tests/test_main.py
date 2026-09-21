@@ -221,5 +221,30 @@ class TestRoutes(unittest.TestCase):
         self.assertEqual(self.users(), {})
 
 
+    def test_close_requires_login(self):
+        self.vote('Ann', 1, 2)
+        self.vote('Bob', 2, 1)
+        self.client.post('/event/close')
+        self.assertFalse(main.get_data()['event']['closed'])
+
+    def test_close_infeasible_keeps_page_open(self):
+        self.login()
+        self.vote('Ann', 1, 2)
+        self.client.post('/event/close')
+        page = main.get_data()['event']
+        self.assertFalse(page['closed'])
+        self.assertNotIn('groups', page)
+
+    def test_close_feasible(self):
+        self.login()
+        self.vote('Ann', 1, 2)
+        self.vote('Bob', 1, 2)
+        self.vote('Cat', 1, 2)
+        self.client.post('/event/close')
+        page = main.get_data()['event']
+        self.assertTrue(page['closed'])
+        self.assertEqual(sorted(len(g) for g in page['groups'].values()), [1, 2])
+
+
 if __name__ == '__main__':
     unittest.main()
