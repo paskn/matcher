@@ -3,6 +3,7 @@ from flask import Flask, render_template, request, redirect, url_for, abort, ses
 import json
 import os
 import re
+import networkx as nx
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
@@ -53,10 +54,19 @@ def admin():
         return redirect(url_for('login'))
     if request.method == 'POST':
         page_name = request.form.get('page_name')
-        projects = request.form.get('projects').split(',')
-        cap_type = request.form.get('cap_type')
-        group_size = int(request.form.get('group_size'))
-        variation = int(request.form.get('variation', 0))
+        projects = [p.strip() for p in request.form.get('projects', '').split(',') if p.strip()]
+        try:
+            min_size = int(request.form.get('min_size'))
+            max_size = int(request.form.get('max_size'))
+        except (TypeError, ValueError):
+            flash('Group sizes must be whole numbers.')
+            return redirect(url_for('admin'))
+        if not 1 <= min_size <= max_size:
+            flash('Group sizes need 1 <= minimum <= maximum.')
+            return redirect(url_for('admin'))
+        if len(set(projects)) != len(projects):
+            flash('Project names must be unique.')
+            return redirect(url_for('admin'))
 
         if page_name and projects:
             data = get_data()
@@ -68,12 +78,11 @@ def admin():
                 i += 1
             data[page_id] = {
                 'name': page_name,
-                'projects': [p.strip() for p in projects],
+                'projects': projects,
                 'users': {},
                 'closed': False,
-                'cap_type': cap_type,
-                'group_size': group_size,
-                'variation': variation
+                'min_size': min_size,
+                'max_size': max_size
             }
             save_data(data)
             return redirect(url_for('admin'))
@@ -121,11 +130,16 @@ def close(page_id):
     page = data.get(page_id)
     if not page:
         abort(404)
-    
+
+    try:
+        assign_groups(page)
+    except InfeasibleGroups as e:
+        # Keep the page open so the admin can adjust sizes or collect more votes.
+        flash(str(e))
+        return redirect(url_for('admin'))
     page['closed'] = True
-    assign_groups(page)
     save_data(data)
-    
+
     return redirect(url_for('results', page_id=page_id))
 
 @app.route('/<page_id>/reopen', methods=['POST'])
@@ -138,6 +152,8 @@ def reopen(page_id):
         abort(404)
     
     page['closed'] = False
+    page.pop('groups', None)
+    page.pop('algorithm', None)
     save_data(data)
     
     return redirect(url_for('admin'))
@@ -151,85 +167,128 @@ def results(page_id):
     
     return render_template('results.html', page=page)
 
-def assign_groups(page):
+@app.route('/admin/recompute/<page_id>', methods=['POST'])
+def recompute(page_id):
+    if 'logged_in' not in session:
+        return redirect(url_for('login'))
+
+    data = get_data()
+    page = data.get(page_id)
+    if not page:
+        abort(404)
+
+    costs_str = request.form.get('costs', '').strip()
+    try:
+        costs = [int(x) for x in costs_str.split(',')] if costs_str else None
+    except ValueError:
+        flash(f'Costs must be comma-separated integers, got "{costs_str}".')
+        return redirect(url_for('admin'))
+
+    try:
+        assign_groups(page, costs)
+    except InfeasibleGroups as e:
+        flash(str(e))
+        return redirect(url_for('admin'))
+    # Later regroupings, e.g. after a size change, reuse these costs.
+    if costs:
+        page['costs'] = costs
+
+    save_data(data)
+    return redirect(url_for('admin'))
+
+DEFAULT_COSTS = [-100, 50, 100, 200]
+
+class InfeasibleGroups(ValueError):
+    pass
+
+def size_bounds(page):
+    """Return (min_size, max_size) for every group on the page."""
+    if 'min_size' in page:
+        return page['min_size'], page['max_size']
+    # Pages created before min/max fields existed stored a target size and a
+    # variation. A hard cap had no lower bound, so it maps to a minimum of 1.
+    group_size = page.get('group_size', 1)
+    variation = abs(page.get('variation', 0))
+    if page.get('cap_type') == 'hard':
+        return 1, group_size
+    return max(1, group_size - variation), group_size + variation
+
+def feasible_range(page):
+    """Headcounts for which every project can run within its size bounds."""
+    min_size, max_size = size_bounds(page)
+    num_projects = len(page['projects'])
+    return num_projects * min_size, num_projects * max_size
+
+def rank_cost(rank, costs):
+    """Cost of giving someone their `rank`-th choice (1 = first choice)."""
+    if rank <= len(costs):
+        return costs[rank - 1]
+    # Ranks beyond the cost list keep growing by the last step. Otherwise the
+    # solver would treat a 5th and a 10th choice as equally bad.
+    step = costs[-1] - costs[-2] if len(costs) > 1 else 0
+    return costs[-1] + (rank - len(costs)) * step
+
+def assign_groups(page, costs=None):
+    """Assign every user to exactly one project, minimising total rank cost.
+
+    Every project receives between min_size and max_size members. No project
+    is left empty or undersized, because events cannot cancel projects.
+    Raises InfeasibleGroups when the headcount cannot fit those bounds.
+    """
     users = page['users']
     projects = page['projects']
+    costs = costs or page.get('costs') or DEFAULT_COSTS
     num_users = len(users)
     num_projects = len(projects)
 
     if num_projects == 0:
         page['groups'] = {}
         return
-    cap_type = page.get('cap_type', 'soft')
-    group_size = page.get('group_size', num_users // num_projects if num_projects > 0 else 1)
-    # Variation is expected to be a positive number. Using abs() to handle negative inputs gracefully.
-    variation = abs(page.get('variation', 0))
-
     if num_users == 0:
         page['groups'] = {project: [] for project in projects}
         return
 
-    groups = {project: [] for project in projects}
-    assigned_users = set()
+    min_size, max_size = size_bounds(page)
+    if min_size > max_size:
+        raise InfeasibleGroups(f'Minimum group size {min_size} exceeds maximum {max_size}.')
+    low, high = feasible_range(page)
+    if not low <= num_users <= high:
+        raise InfeasibleGroups(
+            f'{num_users} people cannot fill {num_projects} projects of '
+            f'{min_size}-{max_size} people each. '
+            f'The headcount must be between {low} and {high}.'
+        )
 
-    user_preferences = []
+    # Tuple node names keep users and projects apart when a person's name
+    # matches a project name.
+    G = nx.DiGraph()
+    # Min-cost flow has no native lower bound on edges. The standard reduction
+    # pre-routes min_size units through each project->dest edge: the project
+    # node must absorb min_size units, dest absorbs that much less, and the
+    # edge keeps only the remaining capacity max_size - min_size.
+    G.add_node(('dest',), demand=num_users - num_projects * min_size)
+    for project in projects:
+        G.add_node(('project', project), demand=min_size)
+        G.add_edge(('project', project), ('dest',), capacity=max_size - min_size, weight=0)
+
     for user_name, preferences in users.items():
-        sorted_prefs = sorted(preferences.items(), key=lambda item: item[1])
-        user_preferences.append({'name': user_name, 'prefs': sorted_prefs})
+        G.add_node(('user', user_name), demand=-1)
+        for project in projects:
+            # A missing rank counts as the last choice.
+            rank = preferences.get(project, num_projects)
+            G.add_edge(('user', user_name), ('project', project),
+                       capacity=1, weight=rank_cost(rank, costs))
 
-    if cap_type == 'hard':
-        # Hard cap logic
-        for preference_level in range(1, num_projects + 1):
-            for user in user_preferences:
-                if user['name'] in assigned_users:
-                    continue
-                for project, pref_value in user['prefs']:
-                    if pref_value == preference_level:
-                        if len(groups[project]) < group_size:
-                            groups[project].append(user['name'])
-                            assigned_users.add(user['name'])
-                            break
-        
-        # Assign remaining users to any group that is not full
-        remaining_users = [user for user in user_preferences if user['name'] not in assigned_users]
-        for user in remaining_users:
-            for project in projects:
-                if len(groups[project]) < group_size:
-                    groups[project].append(user['name'])
-                    assigned_users.add(user['name'])
-                    break
+    flowdict = nx.min_cost_flow(G)
 
-    else: # Soft cap logic
-        min_group_size = max(1, group_size - variation)
-        max_group_size = group_size + variation
-
-        # First pass: assign users to their preferred groups if not full
-        for preference_level in range(1, num_projects + 1):
-            for user in user_preferences:
-                if user['name'] in assigned_users:
-                    continue
-                for project, pref_value in user['prefs']:
-                    if pref_value == preference_level:
-                        if len(groups[project]) < max_group_size:
-                            groups[project].append(user['name'])
-                            assigned_users.add(user['name'])
-                            break
-
-        # Assign remaining users, prioritizing smaller groups
-        remaining_users = [user for user in user_preferences if user['name'] not in assigned_users]
-        for user in remaining_users:
-            # Find the smallest group that is not full
-            available_groups = {p: len(g) for p, g in groups.items() if len(g) < max_group_size}
-            if not available_groups:
-                # If all groups are full, just add to the smallest one (should not happen if max_group_size is reasonable)
-                smallest_group = min(groups, key=lambda k: len(groups[k]))
-            else:
-                smallest_group = min(available_groups, key=available_groups.get)
-            
-            groups[smallest_group].append(user['name'])
-            assigned_users.add(user['name'])
+    groups = {project: [] for project in projects}
+    for user_name in users:
+        for (_, project), flow in flowdict[('user', user_name)].items():
+            if flow:
+                groups[project].append(user_name)
 
     page['groups'] = groups
+    page['algorithm'] = f'min-cost, group size {min_size}-{max_size}, costs {costs}'
 
 if __name__ == '__main__':
     app.run(debug=True)

@@ -33,11 +33,12 @@ To run the application locally without Docker, follow these steps:
 
 ## Testing
 
-There are currently no automated tests for this application. To add tests, you can use a testing framework like `pytest`.
+```bash
+uv run --with pytest pytest -q
+```
 
-1.  Install pytest:
-    ```bash
-    pip install pytest
-    ```
+## Group assignment
 
-2.  Create a `tests` directory and add your test files (e.g., `tests/test_app.py`).
+See `doc/sorting-logic.md`.
+Every project runs with a size between the page's minimum and maximum.
+Closing fails, and the page stays open, if the headcount does not fit.

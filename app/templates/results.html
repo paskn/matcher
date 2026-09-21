@@ -24,6 +24,10 @@
                 </div>
             {% endfor %}
         </div>
+
+        {% if page.algorithm %}
+            <p class="sorting-note">Sorted using: {{ page.algorithm }}</p>
+        {% endif %}
     </div>
 </body>
 </html>

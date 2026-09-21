@@ -12,6 +12,16 @@
             <h1>Admin</h1>
         </div>
 
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <ul class="flash">
+                    {% for message in messages %}
+                        <li>{{ message }}</li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+        {% endwith %}
+
         <h2>Create a New Choice Page</h2>
         <form action="{{ url_for('admin') }}" method="post">
             <div class="form-group">
@@ -23,46 +33,16 @@
                 <input type="text" id="projects" name="projects" required>
             </div>
             <div class="form-group">
-                <label>Cap Type:</label>
-                <div>
-                    <label for="soft_cap" style="margin-right: 5px;">Soft</label>
-                    <input type="radio" id="soft_cap" name="cap_type" value="soft" checked>
-                </div>
-                <div>
-                    <label for="hard_cap" style="margin-right: 5px;">Hard</label>
-                    <input type="radio" id="hard_cap" name="cap_type" value="hard">
-                </div>
+                <label for="min_size">Minimum group size:</label>
+                <input type="number" id="min_size" name="min_size" min="1" required>
             </div>
             <div class="form-group">
-                <label for="group_size">Group Size:</label>
-                <input type="number" id="group_size" name="group_size" min="1" required>
+                <label for="max_size">Maximum group size:</label>
+                <input type="number" id="max_size" name="max_size" min="1" required>
             </div>
-            <div class="form-group" id="variation_group">
-                <label for="variation">Group Size Variation:</label>
-                <input type="number" id="variation" name="variation" min="0" value="0">
-            </div>
+            <p>Every project runs. Closing works only if the number of people fits: projects × minimum up to projects × maximum.</p>
             <button type="submit" class="btn">Create Page</button>
         </form>
-
-        <script>
-            const softCapRadio = document.getElementById('soft_cap');
-            const hardCapRadio = document.getElementById('hard_cap');
-            const variationGroup = document.getElementById('variation_group');
-
-            function toggleVariation() {
-                if (softCapRadio.checked) {
-                    variationGroup.style.display = 'block';
-                } else {
-                    variationGroup.style.display = 'none';
-                }
-            }
-
-            softCapRadio.addEventListener('change', toggleVariation);
-            hardCapRadio.addEventListener('change', toggleVariation);
-
-            // Initial check
-            toggleVariation();
-        </script>
 
         <hr>
 
@@ -83,6 +63,10 @@
                             (Closed)
                             <form action="{{ url_for('reopen', page_id=page_id) }}" method="post" style="display: inline;">
                                 <button type="submit" class="btn">Reopen</button>
+                            </form>
+                            <form action="{{ url_for('recompute', page_id=page_id) }}" method="post" style="display: inline-block; margin-top: 10px;">
+                                <input type="text" name="costs" placeholder="costs, default -100,50,100,200">
+                                <button type="submit" class="btn">Recompute</button>
                             </form>
                         {% endif %}
                         <form action="{{ url_for('delete_page', page_id=page_id) }}" method="post" style="display: inline;">
