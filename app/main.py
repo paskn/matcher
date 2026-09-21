@@ -86,7 +86,11 @@ def admin():
             }
             save_data(data)
             return redirect(url_for('admin'))
-    return render_template('admin.html', pages=get_data())
+    pages = get_data()
+    ranges = {page_id: feasible_range(page) for page_id, page in pages.items()}
+    bounds = {page_id: size_bounds(page) for page_id, page in pages.items()}
+    return render_template('admin.html', pages=pages, ranges=ranges, bounds=bounds,
+                           default_costs=DEFAULT_COSTS)
 
 @app.route('/admin/delete/<page_id>', methods=['POST'])
 def delete_page(page_id):
@@ -96,6 +100,36 @@ def delete_page(page_id):
     if page_id in data:
         del data[page_id]
         save_data(data)
+    return redirect(url_for('admin'))
+
+@app.route('/admin/sizes/<page_id>', methods=['POST'])
+def set_sizes(page_id):
+    if 'logged_in' not in session:
+        return redirect(url_for('login'))
+    data = get_data()
+    page = data.get(page_id)
+    if not page:
+        abort(404)
+    try:
+        min_size = int(request.form.get('min_size'))
+        max_size = int(request.form.get('max_size'))
+    except (TypeError, ValueError):
+        flash('Group sizes must be whole numbers.')
+        return redirect(url_for('admin'))
+    if not 1 <= min_size <= max_size:
+        flash('Group sizes need 1 <= minimum <= maximum.')
+        return redirect(url_for('admin'))
+    # Groups on a closed page must match its sizes, so regroup right away.
+    # Work on a copy: if the new sizes cannot fit the headcount, nothing is saved.
+    updated = dict(page, min_size=min_size, max_size=max_size)
+    if updated['closed']:
+        try:
+            assign_groups(updated)
+        except InfeasibleGroups as e:
+            flash(str(e))
+            return redirect(url_for('admin'))
+    data[page_id] = updated
+    save_data(data)
     return redirect(url_for('admin'))
 
 @app.route('/<page_id>')

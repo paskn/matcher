@@ -220,7 +220,6 @@ class TestRoutes(unittest.TestCase):
         self.vote('Ann', 1, 1)
         self.assertEqual(self.users(), {})
 
-
     def test_close_requires_login(self):
         self.vote('Ann', 1, 2)
         self.vote('Bob', 2, 1)
@@ -244,6 +243,59 @@ class TestRoutes(unittest.TestCase):
         page = main.get_data()['event']
         self.assertTrue(page['closed'])
         self.assertEqual(sorted(len(g) for g in page['groups'].values()), [1, 2])
+
+    def test_set_sizes(self):
+        self.login()
+        self.client.post('/admin/sizes/event', data={'min_size': 2, 'max_size': 3})
+        page = main.get_data()['event']
+        self.assertEqual((page['min_size'], page['max_size']), (2, 3))
+
+    def test_admin_page_renders(self):
+        self.login()
+        self.vote('Ann', 1, 2)
+        response = self.client.get('/admin')
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('need 2–4 responses'.encode(), response.data)
+
+    def test_set_sizes_regroups_closed_page(self):
+        self.login()
+        for name in ['Ann', 'Bob', 'Cat', 'Dan']:
+            self.vote(name, 1, 2)
+        self.client.post('/event/close')
+        self.client.post('/admin/sizes/event', data={'min_size': 2, 'max_size': 2})
+        page = main.get_data()['event']
+        self.assertEqual([len(g) for g in page['groups'].values()], [2, 2])
+
+    def test_set_sizes_infeasible_on_closed_page_keeps_old(self):
+        self.login()
+        for name in ['Ann', 'Bob', 'Cat']:
+            self.vote(name, 1, 2)
+        self.client.post('/event/close')
+        before = main.get_data()['event']
+        self.client.post('/admin/sizes/event', data={'min_size': 3, 'max_size': 3})
+        self.assertEqual(main.get_data()['event'], before)
+
+    def test_set_sizes_infeasible_legacy_page_unchanged(self):
+        self.login()
+        data = main.get_data()
+        legacy = {'name': 'Old', 'projects': ['A', 'B'], 'users': {'Ann': {'A': 1, 'B': 2}},
+                  'closed': True, 'cap_type': 'hard', 'group_size': 1, 'variation': 0,
+                  'groups': {'A': ['Ann'], 'B': []}}
+        data['old'] = legacy
+        main.save_data(data)
+        self.client.post('/admin/sizes/old', data={'min_size': 2, 'max_size': 2})
+        self.assertEqual(main.get_data()['old'], legacy)
+
+    def test_custom_costs_reused_on_resize(self):
+        self.login()
+        for name in ['Ann', 'Bob']:
+            self.vote(name, 1, 2)
+        self.client.post('/event/close')
+        self.client.post('/admin/recompute/event', data={'costs': '0,5'})
+        self.client.post('/admin/sizes/event', data={'min_size': 1, 'max_size': 1})
+        page = main.get_data()['event']
+        self.assertEqual(page['costs'], [0, 5])
+        self.assertIn('[0, 5]', page['algorithm'])
 
 
 if __name__ == '__main__':

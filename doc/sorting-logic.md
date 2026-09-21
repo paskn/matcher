@@ -41,6 +41,7 @@ A solution exists exactly when `projects × min_size <= people <= projects × ma
 Every person can join every project, so no other constraint applies.
 Outside that range the function raises `InfeasibleGroups` and leaves the page unchanged.
 The close route then keeps the page open and shows the admin the valid range.
+The admin page shows the range and the current headcount for each page.
 
 ## Legacy pages
 

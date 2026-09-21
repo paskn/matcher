@@ -47,32 +47,80 @@
         <hr>
 
         <h2>Existing Pages</h2>
-        <ul class="project-list">
+        <ul class="page-list">
             {% for page_id, page in pages.items() %}
-                <li>
-                    <div class="project-name">
-                        <a href="{{ url_for('choice', page_id=page_id) }}">{{ page.name }}</a>
+                {% set low, high = ranges[page_id] %}
+                {% set min_size, max_size = bounds[page_id] %}
+                {% set n = page.users|length %}
+                <li class="page-card">
+                    <div class="page-card-head">
+                        <a class="page-title" href="{{ url_for('choice', page_id=page_id) }}">{{ page.name }}</a>
+                        {% if page.closed %}
+                            <span class="badge badge-closed">Voting closed</span>
+                        {% else %}
+                            <span class="badge badge-open">Voting open</span>
+                        {% endif %}
                     </div>
-                    <div>
-                        <a href="{{ url_for('results', page_id=page_id) }}" class="btn btn-secondary">Results</a>
-                        {% if not page.closed %}
-                            <form action="{{ url_for('close', page_id=page_id) }}" method="post" style="display: inline;">
-                                <button type="submit" class="btn">Close</button>
+
+                    <p class="page-stats">
+                        {{ n }} {{ 'response' if n == 1 else 'responses' }}
+                        · {{ page.projects|length }} projects
+                        · groups of {{ min_size }}–{{ max_size }} people
+                    </p>
+                    {% if not page.closed and (n < low or n > high) %}
+                        <p class="warning">
+                            Groups of {{ min_size }}–{{ max_size }} need {{ low }}–{{ high }} responses.
+                            Closing is blocked until the count fits or you change the sizes.
+                        </p>
+                    {% endif %}
+
+                    <form class="size-form" action="{{ url_for('set_sizes', page_id=page_id) }}" method="post">
+                        <label>Min group size
+                            <input type="number" name="min_size" min="1" value="{{ min_size }}" required>
+                        </label>
+                        <label>Max group size
+                            <input type="number" name="max_size" min="1" value="{{ max_size }}" required>
+                        </label>
+                        <button type="submit" class="btn btn-small btn-outline">
+                            {{ 'Save sizes and regroup' if page.closed else 'Save sizes' }}
+                        </button>
+                    </form>
+
+                    <div class="page-card-actions">
+                        {% if page.closed %}
+                            <a href="{{ url_for('results', page_id=page_id) }}" class="btn btn-small">View groups</a>
+                            <form action="{{ url_for('reopen', page_id=page_id) }}" method="post">
+                                <button type="submit" class="btn btn-small btn-outline">Reopen voting</button>
                             </form>
                         {% else %}
-                            (Closed)
-                            <form action="{{ url_for('reopen', page_id=page_id) }}" method="post" style="display: inline;">
-                                <button type="submit" class="btn">Reopen</button>
+                            <form action="{{ url_for('close', page_id=page_id) }}" method="post">
+                                <button type="submit" class="btn btn-small">Close voting and make groups</button>
                             </form>
-                            <form action="{{ url_for('recompute', page_id=page_id) }}" method="post" style="display: inline-block; margin-top: 10px;">
-                                <input type="text" name="costs" placeholder="costs, default -100,50,100,200">
-                                <button type="submit" class="btn">Recompute</button>
-                            </form>
+                            <a href="{{ url_for('choice', page_id=page_id) }}" class="btn btn-small btn-outline">Open voting page</a>
                         {% endif %}
-                        <form action="{{ url_for('delete_page', page_id=page_id) }}" method="post" style="display: inline;">
-                            <button type="submit" class="btn btn-danger">Delete</button>
+                        <form class="push-right" action="{{ url_for('delete_page', page_id=page_id) }}" method="post"
+                              onsubmit="return confirm('Delete {{ page.name|e }} and all its responses?');">
+                            <button type="submit" class="btn btn-small btn-danger">Delete</button>
                         </form>
                     </div>
+
+                    {% if page.closed %}
+                        <details class="advanced">
+                            <summary>Advanced: rank costs</summary>
+                            <p>
+                                Each number is the cost of giving someone their 1st, 2nd, 3rd… choice.
+                                The sorter picks groups with the lowest total cost.
+                                A big gap between 1st and 2nd protects first choices.
+                                Equal steps, e.g. 0,1,2,3, treat every step down the list the same.
+                            </p>
+                            <form class="size-form" action="{{ url_for('recompute', page_id=page_id) }}" method="post">
+                                <label>Costs
+                                    <input type="text" name="costs" value="{{ (page.costs or default_costs)|join(',') }}" required>
+                                </label>
+                                <button type="submit" class="btn btn-small btn-outline">Regroup</button>
+                            </form>
+                        </details>
+                    {% endif %}
                 </li>
             {% endfor %}
         </ul>
