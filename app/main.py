@@ -196,6 +196,43 @@ def close(page_id):
 
     return redirect(url_for('results', page_id=page_id))
 
+def equal_sizes(num_users, num_projects):
+    """Tightest (min_size, max_size) that fits the headcount exactly."""
+    # Floor and ceiling of the mean make groups differ by at most one person.
+    # This pair is always feasible when there is at least one person per project.
+    return num_users // num_projects, -(-num_users // num_projects)
+
+@app.route('/<page_id>/close-equal', methods=['POST'])
+def close_equal(page_id):
+    if 'logged_in' not in session:
+        return redirect(url_for('login'))
+    data = get_data()
+    page = data.get(page_id)
+    if not page:
+        abort(404)
+
+    num_users = len(page['users'])
+    num_projects = len(page['projects'])
+    # Every project must run, so each needs at least one person.
+    if num_users < num_projects:
+        flash(f'{num_users} people cannot fill {num_projects} projects. '
+              f'Each project needs at least one person.')
+        return redirect(url_for('admin'))
+
+    min_size, max_size = equal_sizes(num_users, num_projects)
+    # Work on a copy so a failure leaves the stored sizes untouched.
+    updated = dict(page, min_size=min_size, max_size=max_size)
+    try:
+        assign_groups(updated)
+    except InfeasibleGroups as e:
+        flash(str(e))
+        return redirect(url_for('admin'))
+    updated['closed'] = True
+    data[page_id] = updated
+    save_data(data)
+
+    return redirect(url_for('results', page_id=page_id))
+
 @app.route('/<page_id>/reopen', methods=['POST'])
 def reopen(page_id):
     if 'logged_in' not in session:

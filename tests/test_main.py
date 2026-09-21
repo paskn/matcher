@@ -244,6 +244,43 @@ class TestRoutes(unittest.TestCase):
         self.assertTrue(page['closed'])
         self.assertEqual(sorted(len(g) for g in page['groups'].values()), [1, 2])
 
+    def test_close_equal_ignores_stored_sizes(self):
+        """Stored sizes 1-2 cannot fit 5 people; equal sizes 2-3 can."""
+        self.login()
+        for name in ['Ann', 'Bob', 'Cat', 'Dan', 'Eve']:
+            self.vote(name, 1, 2)
+        self.client.post('/event/close-equal')
+        page = main.get_data()['event']
+        self.assertTrue(page['closed'])
+        self.assertEqual((page['min_size'], page['max_size']), (2, 3))
+        self.assertEqual(sorted(len(g) for g in page['groups'].values()), [2, 3])
+
+    def test_close_equal_exact_division(self):
+        self.login()
+        for name in ['Ann', 'Bob', 'Cat', 'Dan']:
+            self.vote(name, 1, 2)
+        self.client.post('/event/close-equal')
+        page = main.get_data()['event']
+        self.assertEqual([len(g) for g in page['groups'].values()], [2, 2])
+
+    def test_close_equal_too_few_people_keeps_page_open(self):
+        self.login()
+        self.vote('Ann', 1, 2)
+        before = main.get_data()['event']
+        self.client.post('/event/close-equal')
+        self.assertEqual(main.get_data()['event'], before)
+
+    def test_close_equal_requires_login(self):
+        self.vote('Ann', 1, 2)
+        self.vote('Bob', 2, 1)
+        self.client.post('/event/close-equal')
+        self.assertFalse(main.get_data()['event']['closed'])
+
+    def test_equal_sizes(self):
+        self.assertEqual(main.equal_sizes(20, 4), (5, 5))
+        self.assertEqual(main.equal_sizes(22, 4), (5, 6))
+        self.assertEqual(main.equal_sizes(3, 3), (1, 1))
+
     def test_set_sizes(self):
         self.login()
         self.client.post('/admin/sizes/event', data={'min_size': 2, 'max_size': 3})

@@ -42,3 +42,6 @@ uv run --with pytest pytest -q
 See `doc/sorting-logic.md`.
 Every project runs with a size between the page's minimum and maximum.
 Closing fails, and the page stays open, if the headcount does not fit.
+"Close voting with equal groups" skips the stored sizes.
+It sets them to the headcount divided by the number of projects, rounded down and up.
+Groups then differ by at most one person.

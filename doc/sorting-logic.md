@@ -43,6 +43,9 @@ Outside that range the function raises `InfeasibleGroups` and leaves the page un
 The close route then keeps the page open and shows the admin the valid range.
 The admin page shows the range and the current headcount for each page.
 
+"Close voting with equal groups" sets `min_size = people // projects` and `max_size` to the ceiling of the same ratio.
+That pair always fits, so closing fails only when there are fewer people than projects.
+
 ## Legacy pages
 
 Pages created before `min_size` and `max_size` existed store `cap_type`, `group_size` and `variation`.
