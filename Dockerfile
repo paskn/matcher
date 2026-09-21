@@ -1,12 +1,10 @@
 
-FROM python:3.11-slim
+FROM python:3.13-slim
 
 WORKDIR /app
 
-RUN pip install uv
-
 COPY requirements.txt requirements.txt
-RUN uv pip install -r requirements.txt --system
+RUN pip install -r requirements.txt
 
 COPY app/ /app/app/
 
